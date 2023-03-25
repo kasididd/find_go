@@ -1,0 +1,385 @@
+import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/src/widgets/framework.dart';
+import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:ux_ui_find_go/auth/google_sign.dart';
+import 'package:ux_ui_find_go/pages/edit_profile.dart';
+import 'package:ux_ui_find_go/pages/main_menu/create_room.dart';
+import 'package:ux_ui_find_go/pages/main_menu/qr_scan.dart';
+import 'package:ux_ui_find_go/pages/maps_page.dart';
+import 'package:ux_ui_find_go/pages/settings/category_settings.dart';
+import 'package:ux_ui_find_go/pages/settings/role_settings.dart';
+import 'package:ux_ui_find_go/pages/settings/system_settings.dart';
+import 'package:ux_ui_find_go/pages/stl/accep_page.dart';
+import 'package:ux_ui_find_go/utility/basic.dart';
+import 'package:ux_ui_find_go/utility/colors.dart';
+import 'package:ux_ui_find_go/widget/assist_widget.dart';
+
+class MainMenu extends StatefulWidget {
+  const MainMenu({super.key});
+
+  @override
+  State<MainMenu> createState() => _MainMenuState();
+}
+
+class _MainMenuState extends State<MainMenu> {
+  List roomList = [
+    {'name': 'nameRoom', 'IDroom': '234-152-552', 'visible': true},
+    {'name': 'nameRoom', 'IDroom': '524-152-552', 'visible': true}
+  ];
+  @override
+  Widget build(BuildContext context) {
+    Size size = getSize(context);
+    return Scaffold(
+        body: SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const NavBar(),
+          // รูปผู้ใช้
+          const UserProfile(),
+          // 3 floors buttons
+          AllButton(size: size),
+          // รายการห้อง
+          RoomExpaned(context)
+        ],
+      ),
+    ));
+  }
+
+  Expanded RoomExpaned(BuildContext context) {
+    return Expanded(
+        child: ReorderableListView(
+            onReorder: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) {
+                newIndex--;
+              }
+              setState(() {
+                final item = roomList.removeAt(oldIndex);
+                roomList.insert(newIndex, item);
+              });
+            },
+            children: [
+          for (int index = 0; index < roomList.length; index++)
+            Card(
+              key: ValueKey(index),
+              color: roomList[index]['visible']
+                  ? Colors.grey.shade100
+                  : Colors.grey.shade400,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => !roomList[index]['visible']
+                    ? null
+                    : Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AccepPage(IDroom: roomList[index]['IDroom']),
+                        )),
+                child: ListTile(
+                  leading: const Icon(
+                    Icons.lock,
+                    color: Colors.amber,
+                  ),
+                  title: Text(roomList[index]['name']),
+                  subtitle: Text(roomList[index]['IDroom']),
+                  trailing: IconButton(
+                    onPressed: () => setState(() {
+                      roomList[index]['visible'] = !roomList[index]['visible'];
+                    }),
+                    icon: Icon(
+                      roomList[index]['visible']
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: kBackgroundGreen,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]));
+  }
+}
+
+class AllButton extends StatelessWidget {
+  const AllButton({
+    super.key,
+    required this.size,
+  });
+
+  final Size size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SquareButtonM(
+                text: "Edit Profile",
+                func: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfile(),
+                    ))),
+            const SizedBox(
+              width: 10,
+            ),
+            DropdownButtonHideUnderline(
+              child: DropdownButton2(
+                customButton: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                      color: kBackgroundGreen,
+                      borderRadius: BorderRadius.circular(12)),
+                  child: const Text(
+                    "⚙️ Settings",
+                    style: TextStyle(color: Colors.white, fontSize: 24),
+                  ),
+                ),
+                customItemsHeights: [
+                  ...List<double>.filled(MenuItems.firstItems.length, 48),
+                  8,
+                ],
+                items: [
+                  ...MenuItems.firstItems.map(
+                    (item) => DropdownMenuItem<MenuItem>(
+                      value: item,
+                      child: MenuItems.buildItem(item),
+                    ),
+                  ),
+                  const DropdownMenuItem<Divider>(
+                      enabled: false, child: Divider()),
+                ],
+                onChanged: (value) {
+                  MenuItems.onChanged(context, value as MenuItem);
+                },
+                itemHeight: 48,
+                itemPadding: const EdgeInsets.only(left: 16, right: 16),
+                dropdownWidth: 200,
+                dropdownPadding: const EdgeInsets.symmetric(vertical: 6),
+                dropdownDecoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: Colors.white,
+                ),
+                dropdownElevation: 8,
+                offset: const Offset(0, 8),
+              ),
+            ),
+          ],
+        ),
+        // ตัวกัน
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Container(
+            color: Colors.grey,
+            width: size.width * .8,
+            height: 2,
+          ),
+        ),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: const [
+              SizedBox(
+                width: 10,
+              ),
+              ButtonB(
+                text: "Private Room",
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                child: ButtonB(
+                  text: "Private Room",
+                ),
+              ),
+              ButtonB(
+                text: "Private Room",
+              ),
+              SizedBox(
+                width: 10,
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              OvalButton(
+                func: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CreateRoom(),
+                    )),
+                icons: Icons.add,
+                text: "Create Room",
+              ),
+              OvalButton(
+                func: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const QRscan(),
+                    )),
+                icons: Icons.login,
+                text: "Join Room\n& QR Scan",
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class UserProfile extends StatelessWidget {
+  const UserProfile({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipOval(
+          child: Container(
+            width: 100,
+            height: 100,
+            color: Colors.green[800],
+            child: const Center(
+              child: Text(
+                "D",
+                style: TextStyle(
+                  fontSize: 24,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // ชื่อ
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            "firstName LastName",
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class NavBar extends StatelessWidget {
+  const NavBar({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            onPressed: () => launchUrl(
+                Uri.parse("https://www.youtube.com/@Flutter_TH"),
+                mode: LaunchMode.externalApplication),
+            icon: const Icon(
+              Icons.book,
+              size: 50,
+              color: Colors.red,
+            ),
+          ),
+          // ชื่อผู้ใช้
+          const Text("userName"),
+          IconButton(
+            onPressed: () => GoogleAPI().logout(context: context),
+            icon: Icon(
+              Icons.logout,
+              color: kBackgroundGreen,
+              size: 50,
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class MenuItems {
+  static const List<MenuItem> firstItems = [category, rule, system];
+
+  static const category =
+      MenuItem(text: 'ประเภทปักหมุด', icon: Icons.category_rounded);
+  static const rule = MenuItem(text: 'กำหนดสิทธ์', icon: Icons.rule);
+  static const system = MenuItem(text: 'จัดการระบบ', icon: Icons.settings);
+
+  static Widget buildItem(MenuItem item) {
+    return Row(
+      children: [
+        Icon(item.icon, color: Colors.black, size: 22),
+        const SizedBox(
+          width: 10,
+        ),
+        Text(
+          item.text,
+          style: const TextStyle(
+            color: Colors.black,
+          ),
+        ),
+      ],
+    );
+  }
+
+  static onChanged(BuildContext context, MenuItem item) {
+    switch (item) {
+      case MenuItems.category:
+        {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CategorySettings(),
+              ));
+        }
+        //Do something
+        break;
+
+      case MenuItems.rule:
+        {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RoleSettings(),
+              ));
+        }
+        //Do something
+        break;
+      case MenuItems.system:
+        {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SystemSettings(),
+              ));
+        }
+        //Do something
+        break;
+    }
+  }
+}
+
+class MenuItem {
+  final String text;
+  final IconData icon;
+
+  const MenuItem({
+    required this.text,
+    required this.icon,
+  });
+}

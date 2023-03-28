@@ -1,12 +1,11 @@
 // ignore_for_file: non_constant_identifier_names
-
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:label_marker/label_marker.dart';
 import 'package:location/location.dart';
 import 'package:marker_icon/marker_icon.dart';
 import 'package:provider/provider.dart';
@@ -19,10 +18,10 @@ import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:http/http.dart' as http;
-
 import '../const.dart';
 import '../server/Room/model_room.dart';
 import '../service/room_provider.dart';
+import '../service/user_provider.dart';
 import 'five_menu/social_page.dart';
 
 class MapsPage extends StatefulWidget {
@@ -38,46 +37,11 @@ class _MapsPageState extends State<MapsPage> {
   String stateEvent = "init";
   LocationData? currentLocation;
   List<User> roomUser = [];
-  void getCurrentLocation() async {
-    Location location = Location();
-    location.getLocation().then((location) async {
-      currentLocation = location;
-      // ส่งข้อมูลที่อยู่ใหม่
-      if (kDebugMode) {
-        print(location);
-      }
-      try {
-        final res = await http.post(Uri.parse("http://127.0.0.1:5000/get"),
-            body: jsonEncode({"table": "users", "id": "1"}),
-            headers: {'content-type': 'application/json'});
-        // print(res.body);
-        passCount++;
-        final usersLocation = jsonDecode(res.body)['message'][0][5];
-        if (kDebugMode) {
-          print(res.statusCode);
-        }
-        // print(usersLocation);
-        locationMarker(
-            newPosition: LatLng(
-                double.parse(usersLocation.toString().split(",")[0]),
-                double.parse(usersLocation.toString().split(",")[1])));
-      } catch (e) {
-        print("err : $e");
-      }
-      setState(() {});
-    });
-  }
-
   Set<Marker> _markers = <Marker>{};
   BitmapDescriptor mylocation = BitmapDescriptor.defaultMarker;
-  bool volumeOff = true;
-  bool share = false;
-  int round = 25;
-
+  bool volumeOff = true, share = false;
   ValueNotifier<bool> isDialOpen = ValueNotifier(false);
-
-  int count = -1;
-  int passCount = 0;
+  int count = -1, passCount = 0, round = 25;
   @override
   void initState() {
     setCustomerMarker();
@@ -87,7 +51,6 @@ class _MapsPageState extends State<MapsPage> {
 
   @override
   Widget build(BuildContext context) {
-    RoomProvider roomProvider = context.watch<RoomProvider>();
     Size size = getSize(context);
     return Scaffold(
       body: WillPopScope(
@@ -108,7 +71,7 @@ class _MapsPageState extends State<MapsPage> {
             // ไอคอน หลัก
             fiveIcons(context),
             //mainGoogleMaps
-            mainMaps(roomProvider: roomProvider)
+            mainMaps()
           ],
         )),
       ),
@@ -119,7 +82,9 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  Expanded mainMaps({required RoomProvider roomProvider}) {
+  Expanded mainMaps() {
+    RoomProvider roomProvider = context.watch<RoomProvider>();
+    UserProvider userProvider = context.watch<UserProvider>();
     return Expanded(
         child: SizedBox(
       width: double.infinity,
@@ -134,7 +99,9 @@ class _MapsPageState extends State<MapsPage> {
                     myLocationButtonEnabled: false,
                     myLocationEnabled: true,
                     onMapCreated: (controller) {
-                      getDataRoomUsers(roomProvider: roomProvider);
+                      getDataRoomUsers(
+                          roomProvider: roomProvider,
+                          userProvider: userProvider);
                       // setMarker();
                       _controller.complete(controller);
                     },
@@ -319,6 +286,36 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   // functionVariable
+  void getCurrentLocation() async {
+    Location location = Location();
+    location.getLocation().then((location) async {
+      currentLocation = location;
+      // ส่งข้อมูลที่อยู่ใหม่
+      if (kDebugMode) {
+        print(location);
+      }
+      try {
+        final res = await http.post(Uri.parse("http://127.0.0.1:5000/get"),
+            body: jsonEncode({"table": "users", "id": "1"}),
+            headers: {'content-type': 'application/json'});
+        // print(res.body);
+        passCount++;
+        final usersLocation = jsonDecode(res.body)['message'][0][5];
+        if (kDebugMode) {
+          print(res.statusCode);
+        }
+        // print(usersLocation);
+        locationMarker(
+            newPosition: LatLng(
+                double.parse(usersLocation.toString().split(",")[0]),
+                double.parse(usersLocation.toString().split(",")[1])));
+      } catch (e) {
+        print("err : $e");
+      }
+      setState(() {});
+    });
+  }
+
   void setCustomerMarker() {
     BitmapDescriptor.fromAssetImage(ImageConfiguration.empty, "assets/user.png")
         .then((value) => mylocation = value);
@@ -326,6 +323,7 @@ class _MapsPageState extends State<MapsPage> {
 
   SpeedDial floatingSpeedDial(BuildContext context) {
     RoomProvider roomProvider = context.watch<RoomProvider>();
+    UserProvider userProvider = context.watch<UserProvider>();
     return SpeedDial(
       animatedIcon: AnimatedIcons.menu_close,
       openCloseDial: isDialOpen,
@@ -362,7 +360,8 @@ class _MapsPageState extends State<MapsPage> {
             backgroundColor: Colors.blue,
             child: const Icon(Icons.refresh),
             label: 'Refresh My Room',
-            onTap: () => getDataRoomUsers(roomProvider: roomProvider)),
+            onTap: () => getDataRoomUsers(
+                roomProvider: roomProvider, userProvider: userProvider)),
         SpeedDialChild(
             backgroundColor: Colors.blue,
             child: const Icon(Icons.visibility_off),
@@ -558,19 +557,28 @@ class _MapsPageState extends State<MapsPage> {
     List<double> current =
         user.uLocation.split(",").toList().map((e) => double.parse(e)).toList();
     LatLng latLng = LatLng(current[0], current[1]);
-    _markers.add(
-      Marker(
+    if (user.uImage == "None") {
+      _markers.addLabelMarker(LabelMarker(
+        label: user.uUsername,
         markerId: MarkerId(user.uID.toString()),
-        icon: await MarkerIcon.downloadResizePictureCircle(user.uImage,
-            size: 150,
-            addBorder: true,
-            borderColor: Colors.white,
-            borderSize: 15),
-        infoWindow: InfoWindow(title: user.uUsername, snippet: user.uName),
-        visible: true,
         position: latLng,
-      ),
-    );
+        backgroundColor: kClickButton,
+      ));
+    } else {
+      _markers.add(
+        Marker(
+          markerId: MarkerId(user.uID.toString()),
+          icon: await MarkerIcon.downloadResizePictureCircle(user.uImage,
+              size: 150,
+              addBorder: true,
+              borderColor: Colors.white,
+              borderSize: 15),
+          infoWindow: InfoWindow(title: user.uUsername, snippet: user.uName),
+          visible: true,
+          position: latLng,
+        ),
+      );
+    }
     setState(() {});
   }
 
@@ -659,7 +667,9 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
-  void getDataRoomUsers({required RoomProvider roomProvider}) {
+  void getDataRoomUsers(
+      {required RoomProvider roomProvider,
+      required UserProvider userProvider}) {
     stateEvent = "get Users...";
     roomUser = [];
     _markers.clear();
@@ -668,7 +678,9 @@ class _MapsPageState extends State<MapsPage> {
       List<User> res = await CrudeUser().getUsersID(uID: e.value.userMember);
       if (res.isNotEmpty) {
         roomUser.add(res[0]);
-        addMarkerUser(user: res[0]);
+        if (res[0].uID != userProvider.userInfo!.uID) {
+          addMarkerUser(user: res[0]);
+        }
       }
     }).toList();
   }

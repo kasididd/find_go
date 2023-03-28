@@ -16,7 +16,6 @@ import 'package:ux_ui_find_go/server/Room/model_room.dart';
 import 'package:ux_ui_find_go/utility/basic.dart';
 import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
-
 import '../service/user_provider.dart';
 
 class MainMenu extends StatefulWidget {
@@ -26,12 +25,8 @@ class MainMenu extends StatefulWidget {
 }
 
 class _MainMenuState extends State<MainMenu> {
-  List<Room> roomList = [
-    // {'name': 'nameRoom', 'IDroom': '234-152-552', 'visible': true},
-    // {'name': 'nameRoom', 'IDroom': '524-152-552', 'visible': true}
-  ];
+  List<Room> roomList = [];
   String stateEvent = "init";
-
   @override
   Widget build(BuildContext context) {
     Size size = getSize(context);

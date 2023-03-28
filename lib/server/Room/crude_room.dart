@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:ux_ui_find_go/server/Room/model_room.dart';
 
@@ -39,6 +38,22 @@ class CrudeRoom {
       return usersJson.map((user) => Room.fromJson(user)).toList();
     } else {
       throw Exception('Failed to load users');
+    }
+  }
+
+  // C - member
+  Future<int> postRoomMember({required RoomMember roomMember}) async {
+    final body = jsonEncode(roomMember.toJson());
+    final headers = {'Content-Type': 'application/json'};
+    final response = await http.post(Uri.parse(crudeRoomMembersL),
+        headers: headers, body: body);
+    print(body);
+    print(response.statusCode);
+    if (response.statusCode == 200) {
+      return 200;
+      // สำเร็จ
+    } else {
+      throw Exception('Failed to create RoomMember');
     }
   }
 

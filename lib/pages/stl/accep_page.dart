@@ -5,6 +5,7 @@ import 'package:ux_ui_find_go/pages/main_menu.dart';
 import 'package:ux_ui_find_go/server/Room/crude_room.dart';
 import 'package:ux_ui_find_go/server/Room/model_room.dart';
 import 'package:ux_ui_find_go/service/room_provider.dart';
+import 'package:ux_ui_find_go/service/user_provider.dart';
 import 'package:ux_ui_find_go/utility/basic.dart';
 import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
@@ -19,6 +20,7 @@ class AccepPage extends StatelessWidget {
   Widget build(BuildContext context) {
     Size size = getSize(context);
     RoomProvider roomProvider = context.watch<RoomProvider>();
+    UserProvider userProvider = context.watch<UserProvider>();
     if (stateEvent == "init") {
       getRoomMembers(roomProvider: roomProvider);
     }
@@ -45,15 +47,10 @@ class AccepPage extends StatelessWidget {
                     fontWeight: FontWeight.bold),
               ),
               BasicButton(
-                click: true,
-                text: "Accept",
-                func: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => MapsPage(
-                              IDroom: IDroom,
-                            ))),
-              ),
+                  click: true,
+                  text: "Accept",
+                  func: () => checkMember(
+                      userProvider: userProvider, context: context)),
               BasicButton(
                 click: false,
                 text: "Cancel",
@@ -68,6 +65,38 @@ class AccepPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void checkMember(
+      {required UserProvider userProvider, required dynamic context}) async {
+    List<RoomMember> res = await CrudeRoom().getRoomsMembers(roomID: IDroom);
+    bool noDataInRoom = res
+        .where((element) => element.userMember == userProvider.userInfo!.uID)
+        .toList()
+        .isEmpty;
+    Future goMapsPage = Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => MapsPage(
+                  IDroom: IDroom,
+                )));
+    print(res.map((e) => e.userMember).toList());
+    print("User: ${userProvider.userInfo!.uID}");
+    if (noDataInRoom) {
+      int create = await CrudeRoom().postRoomMember(
+          roomMember: RoomMember(
+              rmId: 0,
+              rId: int.parse(IDroom),
+              userMember: userProvider.userInfo!.uID,
+              rClass: 1,
+              status: 1,
+              roomBlackList: 0));
+      if (create == 200) {
+        goMapsPage;
+      }
+    } else {
+      goMapsPage;
+    }
   }
 
   getRoomMembers({required RoomProvider roomProvider}) async {

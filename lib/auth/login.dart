@@ -1,7 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
-
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -208,14 +206,16 @@ class _MainPageState extends State<LoginPage> {
             "U_User_Tell": "0",
           });
           await CrudeUser().postUserData(userEndcode);
-        }
-        if (kDebugMode) {
-          print("db: Login: ${gmailUser.email}");
-          print("db: Login: ${gmailUser.photoUrl}");
-          print("db: ${res.isEmpty}");
-          print("db: $res");
-          print("db: $gmailUser");
-          print("db: $latLong");
+          stateEvent = "register success";
+          List<User> res = await CrudeUser().getUsers(email: gmailUser.email);
+          if (res.isNotEmpty) {
+            userProvider.loginSuccess(userInfo: res[0]);
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MainMenu(),
+                ));
+          }
         }
       } else {
         setState(() {

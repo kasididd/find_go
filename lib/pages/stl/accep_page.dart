@@ -1,21 +1,30 @@
+// ignore_for_file: non_constant_identifier_names, must_be_immutable
 import 'package:flutter/material.dart';
-import 'package:flutter/src/widgets/framework.dart';
-import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:provider/provider.dart';
 import 'package:ux_ui_find_go/pages/main_menu.dart';
-import 'package:ux_ui_find_go/pages/maps_page.dart';
+import 'package:ux_ui_find_go/server/Room/crude_room.dart';
+import 'package:ux_ui_find_go/server/Room/model_room.dart';
+import 'package:ux_ui_find_go/service/room_provider.dart';
 import 'package:ux_ui_find_go/utility/basic.dart';
 import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
 
+import '../maps_page.dart';
+
 class AccepPage extends StatelessWidget {
-  const AccepPage({super.key, required this.IDroom});
+  AccepPage({super.key, required this.IDroom});
   final String IDroom;
+  String stateEvent = "init";
   @override
   Widget build(BuildContext context) {
     Size size = getSize(context);
+    RoomProvider roomProvider = context.watch<RoomProvider>();
+    if (stateEvent == "init") {
+      getRoomMembers(roomProvider: roomProvider);
+    }
     return Scaffold(
       body: SafeArea(
-        child: Container(
+        child: SizedBox(
           height: size.height * .6,
           width: double.infinity,
           child: Column(
@@ -51,7 +60,7 @@ class AccepPage extends StatelessWidget {
                 func: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MainMenu(),
+                      builder: (context) => const MainMenu(),
                     )),
               ),
             ],
@@ -59,5 +68,13 @@ class AccepPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  getRoomMembers({required RoomProvider roomProvider}) async {
+    List<RoomMember> rm = await CrudeRoom().getRoomsMembers(roomID: IDroom);
+    List l = rm.map((e) => e.toJson()).toList();
+    debugPrint("db: $l");
+    roomProvider.getRoomMember(roomMember: rm);
+    stateEvent = "success";
   }
 }

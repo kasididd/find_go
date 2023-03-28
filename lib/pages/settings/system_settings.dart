@@ -20,130 +20,141 @@ class _SystemSettingsState extends State<SystemSettings> {
   Widget build(BuildContext context) {
     Size size = getSize(context);
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100),
+      appBar: const PreferredSize(
+        preferredSize: Size.fromHeight(100),
         child: BasicAppbar(title: "จัดการระบบ(System)"),
       ),
       body: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  Text("ตั้งค่าเมนู"),
-                  Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Text(
-                          "ส่วนตัว",
-                          style: TextStyle(
-                              color: kBackgroundGreen,
-                              fontWeight: FontWeight.w700),
-                        ),
-                        BasicButtonMini(click: true, text: "On"),
-                        BasicButtonMini(click: false, text: "Off"),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Container(
-                      color: Colors.grey.shade300,
-                      width: double.infinity,
-                      height: 2,
-                    ),
-                  ),
-                  Text("ตั้งค่าเวอร์ชั้นแอพฯ"),
-                  TextInputSystem(
-                      size: size, icons: Icons.shield_sharp, hint: "App name"),
-                  TextInputSystem(
-                      size: size, icons: Icons.shield_sharp, hint: "Version"),
-                  Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Text(
-                          "ประเภท",
-                          style: TextStyle(
-                              color: kBackgroundGreen,
-                              fontWeight: FontWeight.w700),
-                        ),
-                        BasicButtonMini(click: true, text: "Full"),
-                        BasicButtonMini(click: false, text: "Trial  "),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      showCupertinoModalPopup(
-                          context: context,
-                          builder: (BuildContext builder) {
-                            return Container(
-                              height: MediaQuery.of(context)
-                                      .copyWith()
-                                      .size
-                                      .height *
-                                  0.25,
-                              color: Colors.white,
-                              child: CupertinoDatePicker(
-                                mode: CupertinoDatePickerMode.dateAndTime,
-                                onDateTimeChanged: (value) {
-                                  setState(() {
-                                    chosenDateTime = value;
-                                  });
-                                  print(DateFormat('yyy-MM-dd-hh:mm:ss')
-                                      .format(chosenDateTime));
-                                },
-                                initialDateTime: DateTime.now(),
-                                minimumYear: 2000,
-                                maximumYear: 3000,
-                              ),
-                            );
-                          });
-                    },
-                    child: Container(
-                      width: 300,
-                      padding: EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          child: SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  children: [
+                    const Text("ตั้งค่าเมนู"),
+                    Padding(
+                      padding: const EdgeInsets.all(18.0),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          Icon(
-                            Icons.calendar_today,
-                            color: kBackgroundGreen,
-                            size: 30,
-                          ),
                           Text(
-                            DateFormat('yyy-MM-dd-hh:mm:ss')
-                                .format(chosenDateTime)
-                                .toString(),
-                            style: TextStyle(color: Colors.black, fontSize: 20),
+                            "ส่วนตัว",
+                            style: TextStyle(
+                                color: kBackgroundGreen,
+                                fontWeight: FontWeight.w700),
                           ),
+                          const BasicButtonMini(click: true, text: "On"),
+                          const BasicButtonMini(click: false, text: "Off"),
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              Column(
-                children: [
-                  BasicButtonMeduim(click: true, text: "แก้ไข"),
-                  Padding(
-                    padding: const EdgeInsets.all(18.0),
-                    child: Container(
-                      color: Colors.grey.shade300,
-                      width: double.infinity,
-                      height: 2,
+                    Padding(
+                      padding: const EdgeInsets.all(18.0),
+                      child: Container(
+                        color: Colors.grey.shade300,
+                        width: double.infinity,
+                        height: 2,
+                      ),
                     ),
-                  ),
-                ],
-              )
-            ],
+                    const Text("ตั้งค่าเวอร์ชั้นแอพฯ"),
+                    TextInputSystem(
+                        size: size,
+                        icons: Icons.shield_sharp,
+                        hint: "App name"),
+                    TextInputSystem(
+                        size: size, icons: Icons.shield_sharp, hint: "Version"),
+                    Padding(
+                      padding: const EdgeInsets.all(18.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Text(
+                            "ประเภท",
+                            style: TextStyle(
+                                color: kBackgroundGreen,
+                                fontWeight: FontWeight.w700),
+                          ),
+                          const BasicButtonMini(click: true, text: "Full"),
+                          const BasicButtonMini(click: false, text: "Trial  "),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 80,
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        showCupertinoModalPopup(
+                            context: context,
+                            builder: (BuildContext builder) {
+                              return Container(
+                                height: MediaQuery.of(context)
+                                        .copyWith()
+                                        .size
+                                        .height *
+                                    0.25,
+                                color: Colors.white,
+                                child: CupertinoDatePicker(
+                                  mode: CupertinoDatePickerMode.dateAndTime,
+                                  onDateTimeChanged: (value) {
+                                    setState(() {
+                                      chosenDateTime = value;
+                                    });
+                                    print(DateFormat('yyy-MM-dd-hh:mm:ss')
+                                        .format(chosenDateTime));
+                                  },
+                                  initialDateTime: DateTime.now(),
+                                  minimumYear: 2000,
+                                  maximumYear: 3000,
+                                ),
+                              );
+                            });
+                      },
+                      child: Container(
+                        width: 300,
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.calendar_today,
+                              color: kBackgroundGreen,
+                              size: 30,
+                            ),
+                            Text(
+                              DateFormat('yyy-MM-dd-hh:mm:ss')
+                                  .format(chosenDateTime)
+                                  .toString(),
+                              style: const TextStyle(
+                                  color: Colors.black, fontSize: 20),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 80,
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    const BasicButtonMeduim(click: true, text: "แก้ไข"),
+                    Padding(
+                      padding: const EdgeInsets.all(18.0),
+                      child: Container(
+                        color: Colors.grey.shade300,
+                        width: double.infinity,
+                        height: 2,
+                      ),
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
         ),
       ),

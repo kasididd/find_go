@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:ux_ui_find_go/auth/login.dart';
+import 'package:ux_ui_find_go/service/room_provider.dart';
+import 'package:ux_ui_find_go/service/user_provider.dart';
 
 void main() async {
-  runApp(const MyApp());
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider(
+        create: (context) => UserProvider(),
+      ),
+      ChangeNotifierProvider(
+        create: (context) => RoomProvider(),
+      )
+    ],
+    child: const MyApp(),
+  ));
 }
 
 // main Page
@@ -11,7 +24,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'GeoFinding',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
           textTheme: TextTheme(
@@ -49,7 +62,9 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(foregroundColor: Colors.white))),
-      home: const LoginPage(),
+      home: const
+          //  Test()
+          LoginPage(),
     );
   }
 }

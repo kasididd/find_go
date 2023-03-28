@@ -1,24 +1,29 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
 import 'package:marker_icon/marker_icon.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:ux_ui_find_go/pages/five_menu/chat_page.dart';
-import 'package:ux_ui_find_go/pages/five_menu/invate_page.dart';
-import 'package:ux_ui_find_go/pages/five_menu/pins_page.dart';
-import 'package:ux_ui_find_go/pages/five_menu/social_page.dart';
-import 'package:ux_ui_find_go/pages/five_menu/users_page.dart';
 import 'package:ux_ui_find_go/pages/main_menu.dart';
+import 'package:ux_ui_find_go/server/User/crude_user.dart';
+import 'package:ux_ui_find_go/server/User/model_user.dart';
 import 'package:ux_ui_find_go/utility/basic.dart';
 import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
 import 'package:map_launcher/map_launcher.dart';
 import 'package:http/http.dart' as http;
+
+import '../const.dart';
+import '../server/Room/model_room.dart';
+import '../service/room_provider.dart';
+import 'five_menu/social_page.dart';
 
 class MapsPage extends StatefulWidget {
   const MapsPage({super.key, required this.IDroom});
@@ -30,22 +35,27 @@ class MapsPage extends StatefulWidget {
 class _MapsPageState extends State<MapsPage> {
   // ? mapsVariable
   final Completer<GoogleMapController> _controller = Completer();
-
+  String stateEvent = "init";
   LocationData? currentLocation;
+  List<User> roomUser = [];
   void getCurrentLocation() async {
     Location location = Location();
     location.getLocation().then((location) async {
       currentLocation = location;
-      print(location);
+      // ส่งข้อมูลที่อยู่ใหม่
+      if (kDebugMode) {
+        print(location);
+      }
       try {
-        print("do");
         final res = await http.post(Uri.parse("http://127.0.0.1:5000/get"),
             body: jsonEncode({"table": "users", "id": "1"}),
             headers: {'content-type': 'application/json'});
         // print(res.body);
         passCount++;
         final usersLocation = jsonDecode(res.body)['message'][0][5];
-        print(res.statusCode);
+        if (kDebugMode) {
+          print(res.statusCode);
+        }
         // print(usersLocation);
         locationMarker(
             newPosition: LatLng(
@@ -63,19 +73,7 @@ class _MapsPageState extends State<MapsPage> {
   bool volumeOff = true;
   bool share = false;
   int round = 25;
-  List fiveMenu = [
-    {"icon": Icons.person, "label": "Users", "pages": const UsersPage()},
-    {"icon": Icons.phone, "label": "0983848383", "pages": ""},
-    {"icon": Icons.message, "label": "Chat", "pages": const ChatePage()},
-    {"icon": Icons.location_pin, "label": "Pins", "pages": const PinsPage()},
-    {"icon": Icons.add, "label": "Invite", "pages": const InvatePage()},
-  ];
-  List fourSocial = [
-    Icons.mobile_screen_share_rounded,
-    Icons.mobile_screen_share_rounded,
-    Icons.mobile_screen_share_rounded,
-    Icons.mobile_screen_share_rounded,
-  ];
+
   ValueNotifier<bool> isDialOpen = ValueNotifier(false);
 
   int count = -1;
@@ -89,12 +87,13 @@ class _MapsPageState extends State<MapsPage> {
 
   @override
   Widget build(BuildContext context) {
+    RoomProvider roomProvider = context.watch<RoomProvider>();
     Size size = getSize(context);
     return Scaffold(
       body: WillPopScope(
         onWillPop: () async {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("โปรกดปุ่มด้านนซ้ายเพื่อออก")));
+              const SnackBar(content: Text("โปรกดปุ่มด้านนซ้ายเพื่อออก")));
           return false;
         },
         child: SafeArea(
@@ -109,7 +108,7 @@ class _MapsPageState extends State<MapsPage> {
             // ไอคอน หลัก
             fiveIcons(context),
             //mainGoogleMaps
-            mainMaps()
+            mainMaps(roomProvider: roomProvider)
           ],
         )),
       ),
@@ -120,12 +119,12 @@ class _MapsPageState extends State<MapsPage> {
     );
   }
 
-  Expanded mainMaps() {
+  Expanded mainMaps({required RoomProvider roomProvider}) {
     return Expanded(
-        child: Container(
+        child: SizedBox(
       width: double.infinity,
       child: currentLocation == null
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
                 GoogleMap(
@@ -135,7 +134,8 @@ class _MapsPageState extends State<MapsPage> {
                     myLocationButtonEnabled: false,
                     myLocationEnabled: true,
                     onMapCreated: (controller) {
-                      setMarker();
+                      getDataRoomUsers(roomProvider: roomProvider);
+                      // setMarker();
                       _controller.complete(controller);
                     },
                     initialCameraPosition: CameraPosition(
@@ -158,7 +158,9 @@ class _MapsPageState extends State<MapsPage> {
               IconButton(
                 onPressed: () {
                   if (Icons.phone == fiveMenu[i]['icon']) {
-                    print("same");
+                    if (kDebugMode) {
+                      print("same");
+                    }
 
                     _makePhoneCall(fiveMenu[i]['label']);
                   }
@@ -323,6 +325,7 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   SpeedDial floatingSpeedDial(BuildContext context) {
+    RoomProvider roomProvider = context.watch<RoomProvider>();
     return SpeedDial(
       animatedIcon: AnimatedIcons.menu_close,
       openCloseDial: isDialOpen,
@@ -359,7 +362,7 @@ class _MapsPageState extends State<MapsPage> {
             backgroundColor: Colors.blue,
             child: const Icon(Icons.refresh),
             label: 'Refresh My Room',
-            onTap: () async {}),
+            onTap: () => getDataRoomUsers(roomProvider: roomProvider)),
         SpeedDialChild(
             backgroundColor: Colors.blue,
             child: const Icon(Icons.visibility_off),
@@ -467,7 +470,7 @@ class _MapsPageState extends State<MapsPage> {
             icon: Icons.edit,
             title: "",
             content: SizedBox(
-              height: size.height / 2,
+              height: size.height / 1.6,
               child: SingleChildScrollView(
                 child: Column(
                   children: [
@@ -549,33 +552,58 @@ class _MapsPageState extends State<MapsPage> {
     await launchUrl(launchUri);
   }
 
+  // ignore: todo
+  // TODO รับที่อยู่ของสมาชิกในห้อง
+  void addMarkerUser({required User user}) async {
+    List<double> current =
+        user.uLocation.split(",").toList().map((e) => double.parse(e)).toList();
+    LatLng latLng = LatLng(current[0], current[1]);
+    _markers.add(
+      Marker(
+        markerId: MarkerId(user.uID.toString()),
+        icon: await MarkerIcon.downloadResizePictureCircle(user.uImage,
+            size: 150,
+            addBorder: true,
+            borderColor: Colors.white,
+            borderSize: 15),
+        infoWindow: InfoWindow(title: user.uUsername, snippet: user.uName),
+        visible: true,
+        position: latLng,
+      ),
+    );
+    setState(() {});
+  }
+
   void setMarker() async {
     _markers.add(
       Marker(
-          markerId: MarkerId('1'),
+          markerId: const MarkerId('1'), //ใช้ ID ของ User
           icon: await MarkerIcon.downloadResizePictureCircle(
-              'https://pixlr.com/images/index/remove-bg.webp',
+              'https://pixlr.com/images/index/remove-bg.webp', //ใช้รูปของ User
               size: 150,
               addBorder: true,
               borderColor: kBackgroundGreen,
               borderSize: 15),
           position: LatLng(
-              currentLocation!.latitude! - .002, currentLocation!.longitude!),
+              // ที่อยู่ User
+              currentLocation!.latitude! - .002,
+              currentLocation!.longitude!),
           onTap: () async {
             showDialog(
               context: context,
               builder: (context) => Dialog(
                 child: Container(
                   height: getSize(context).height * .8,
-                  padding: EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     children: [
                       IconButton(
-                        icon: Icon(Icons.map),
+                        icon: const Icon(Icons.map),
                         onPressed: () async {
                           final availableMaps = await MapLauncher.installedMaps;
-                          print(
-                              availableMaps); // [AvailableMap { mapName: Google Maps, mapType: google }, ...]
+                          if (kDebugMode) {
+                            print(availableMaps);
+                          } // [AvailableMap { mapName: Google Maps, mapType: google }, ...]
 
                           await availableMaps.first.showMarker(
                             coords: Coords(currentLocation!.latitude!,
@@ -584,7 +612,7 @@ class _MapsPageState extends State<MapsPage> {
                           );
                         },
                       ),
-                      Text("นำทาง")
+                      const Text("นำทาง")
                     ],
                   ),
                 ),
@@ -594,14 +622,14 @@ class _MapsPageState extends State<MapsPage> {
     );
     _markers.add(
       Marker(
-        markerId: MarkerId('2'),
+        markerId: const MarkerId('2'),
         icon: await MarkerIcon.downloadResizePictureCircle(
             'https://pixlr.com/images/index/remove-bg.webp',
             size: 150,
             addBorder: true,
             borderColor: Colors.white,
             borderSize: 15),
-        infoWindow: InfoWindow(title: "hello", snippet: "hi they"),
+        infoWindow: const InfoWindow(title: "hello", snippet: "hi they"),
         visible: true,
         position: LatLng(
             currentLocation!.latitude! - .02, currentLocation!.longitude!),
@@ -631,11 +659,24 @@ class _MapsPageState extends State<MapsPage> {
     }
   }
 
+  void getDataRoomUsers({required RoomProvider roomProvider}) {
+    stateEvent = "get Users...";
+    roomUser = [];
+    _markers.clear();
+    List<RoomMember>? roomMember = roomProvider.roomMember;
+    roomMember?.asMap().entries.map((e) async {
+      List<User> res = await CrudeUser().getUsersID(uID: e.value.userMember);
+      if (res.isNotEmpty) {
+        roomUser.add(res[0]);
+        addMarkerUser(user: res[0]);
+      }
+    }).toList();
+  }
+
   void locationMarker({required LatLng newPosition}) async {
     Set<Marker> update = <Marker>{};
     for (Marker target in _markers) {
       if (target.mapsId.value == "1") {
-        print(target.mapsId.value);
         target = target.copyWith(positionParam: newPosition);
         update.add(target);
         setState(() {

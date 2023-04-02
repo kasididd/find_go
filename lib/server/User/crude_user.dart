@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:ux_ui_find_go/server/User/model_user.dart';
 
@@ -49,6 +48,24 @@ class CrudeUser {
       return usersJson.map((user) => User.fromJson(user)).toList();
     } else {
       throw Exception('Failed to load users');
+    }
+  }
+
+  // U{u_id}
+  Future<void> putUsersID(
+      {required int uID, required String userEndcode}) async {
+    final url = Uri.parse("$crudeUserL/location/$uID");
+    final headers = {'Content-Type': 'application/json'};
+    final body = userEndcode;
+    final response = await http.put(url, headers: headers, body: body);
+    if (kDebugMode) {
+      print(response.statusCode);
+    }
+    if (response.statusCode == 200) {
+    } else {
+      if (kDebugMode) {
+        print('Error posting data: ${response.statusCode}');
+      }
     }
   }
 }

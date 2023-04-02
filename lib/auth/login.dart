@@ -180,10 +180,17 @@ class _MainPageState extends State<LoginPage> {
   Future<void> _handleSignIn({required UserProvider userProvider}) async {
     try {
       GoogleSignInAccount? gmailUser = await GoogleSignIn().signIn();
+      Future.delayed(const Duration(seconds: 1)).then((value) {
+        debugPrint("db: $gmailUser");
+        if (gmailUser!.email.isEmpty) {
+          stateEvent = "error email";
+        }
+      });
       setState(() {
         stateEvent = "Loading user";
       });
       if (gmailUser != null) {
+        debugPrint("db: gmail $gmailUser");
         LocationData location = await Location().getLocation();
         String latLong = "${location.latitude},${location.longitude}";
         // ส่ง req ขอข้อมูล User

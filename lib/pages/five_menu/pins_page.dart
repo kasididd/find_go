@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:ux_ui_find_go/utility/basic.dart';
 import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
@@ -66,7 +67,8 @@ class _PinsPageState extends State<PinsPage> {
                   func: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const AddPinsMaps(),
+                        builder: (context) =>
+                            const AddPinsMaps(position: LatLng(0, 0)),
                       )),
                 )),
             const SizedBox(
@@ -91,8 +93,8 @@ class _PinsPageState extends State<PinsPage> {
 }
 
 class AddPinsMaps extends StatefulWidget {
-  const AddPinsMaps({super.key});
-
+  const AddPinsMaps({super.key, required this.position});
+  final LatLng position;
   @override
   State<AddPinsMaps> createState() => _AddPinsMapsState();
 }

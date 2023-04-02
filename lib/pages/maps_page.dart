@@ -5,18 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:label_marker/label_marker.dart';
 import 'package:location/location.dart';
 import 'package:marker_icon/marker_icon.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ux_ui_find_go/pages/five_menu/pins_page.dart';
 import 'package:ux_ui_find_go/pages/main_menu.dart';
 import 'package:ux_ui_find_go/server/User/crude_user.dart';
 import 'package:ux_ui_find_go/server/User/model_user.dart';
 import 'package:ux_ui_find_go/utility/basic.dart';
 import 'package:ux_ui_find_go/utility/colors.dart';
 import 'package:ux_ui_find_go/widget/assist_widget.dart';
-import 'package:map_launcher/map_launcher.dart';
 import 'package:http/http.dart' as http;
 import '../const.dart';
 import '../server/Room/model_room.dart';
@@ -41,17 +40,21 @@ class _MapsPageState extends State<MapsPage> {
   BitmapDescriptor mylocation = BitmapDescriptor.defaultMarker;
   bool volumeOff = true, share = false;
   ValueNotifier<bool> isDialOpen = ValueNotifier(false);
-  int count = -1, passCount = 0, round = 25;
-  @override
-  void initState() {
-    setCustomerMarker();
-    getCurrentLocation();
-    super.initState();
-  }
+  int count = -1, passCount = 0, round = 25, end = 25, userStatus = 1;
 
   @override
   Widget build(BuildContext context) {
     Size size = getSize(context);
+    RoomProvider roomProvider = context.watch<RoomProvider>();
+    UserProvider userProvider = context.watch<UserProvider>();
+    if (stateEvent == "init") {
+      getCurrentLocation();
+      getDataRoomUsers(roomProvider: roomProvider, userProvider: userProvider);
+    }
+    if (stateEvent == "onload") {
+      getCurrentLocation();
+    }
+    // รับMarker เริ่มต้น
     return Scaffold(
       body: WillPopScope(
         onWillPop: () async {
@@ -59,25 +62,40 @@ class _MapsPageState extends State<MapsPage> {
               const SnackBar(content: Text("โปรกดปุ่มด้านนซ้ายเพื่อออก")));
           return false;
         },
-        child: SafeArea(
-            child: Column(
-          children: [
-            // ชั้นที่ 1 ปุ่มย้อนกลับ ชื่อผู้ใช้ ปุ่มปิดเสียง รูปผู้ใช้
-            appBar(context),
-            // ชื่อห้อง
-            const NameRoom(),
-            // ทางลัดโซเชี่ยว เลขห้อง กดเข้าแก้ไข
-            social(context, size),
-            // ไอคอน หลัก
-            fiveIcons(context),
-            //mainGoogleMaps
-            mainMaps()
-          ],
-        )),
+        child: stateEvent == "init"
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : SafeArea(
+                child: Column(
+                children: [
+                  // ชั้นที่ 1 ปุ่มย้อนกลับ ชื่อผู้ใช้ ปุ่มปิดเสียง รูปผู้ใช้
+                  appBar(context),
+                  // ชื่อห้อง
+                  const NameRoom(),
+                  // ทางลัดโซเชี่ยว เลขห้อง กดเข้าแก้ไข
+                  social(context, size),
+                  // ไอคอน หลัก
+                  fiveIcons(context),
+                  //mainGoogleMaps
+                  mainMaps()
+                ],
+              )),
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(vertical: 45.0),
-        child: floatingSpeedDial(context),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            SizedBox(),
+            Column(
+              children: [
+                Text(round < end ? round.toString() : "หยุดการส่ง"),
+                floatingSpeedDial(context)
+              ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -93,6 +111,11 @@ class _MapsPageState extends State<MapsPage> {
           : Stack(
               children: [
                 GoogleMap(
+                    onLongPress: (position) => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddPinsMaps(position: position),
+                        )),
                     buildingsEnabled: true,
                     zoomControlsEnabled: false,
                     mapToolbarEnabled: true,
@@ -102,7 +125,6 @@ class _MapsPageState extends State<MapsPage> {
                       getDataRoomUsers(
                           roomProvider: roomProvider,
                           userProvider: userProvider);
-                      // setMarker();
                       _controller.complete(controller);
                     },
                     initialCameraPosition: CameraPosition(
@@ -218,13 +240,14 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   Row appBar(BuildContext context) {
+    UserProvider userProvider = context.watch<UserProvider>();
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         IconButton(
           onPressed: () async {
             share = false;
-            snackBarUpdate();
+            snackBarUpdate(userProvider: userProvider);
             Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -289,36 +312,14 @@ class _MapsPageState extends State<MapsPage> {
   void getCurrentLocation() async {
     Location location = Location();
     location.getLocation().then((location) async {
+      print("db: $location");
+
       currentLocation = location;
       // ส่งข้อมูลที่อยู่ใหม่
       if (kDebugMode) {
         print(location);
       }
-      try {
-        final res = await http.post(Uri.parse("http://127.0.0.1:5000/get"),
-            body: jsonEncode({"table": "users", "id": "1"}),
-            headers: {'content-type': 'application/json'});
-        // print(res.body);
-        passCount++;
-        final usersLocation = jsonDecode(res.body)['message'][0][5];
-        if (kDebugMode) {
-          print(res.statusCode);
-        }
-        // print(usersLocation);
-        locationMarker(
-            newPosition: LatLng(
-                double.parse(usersLocation.toString().split(",")[0]),
-                double.parse(usersLocation.toString().split(",")[1])));
-      } catch (e) {
-        print("err : $e");
-      }
-      setState(() {});
     });
-  }
-
-  void setCustomerMarker() {
-    BitmapDescriptor.fromAssetImage(ImageConfiguration.empty, "assets/user.png")
-        .then((value) => mylocation = value);
   }
 
   SpeedDial floatingSpeedDial(BuildContext context) {
@@ -345,9 +346,12 @@ class _MapsPageState extends State<MapsPage> {
                 isDialOpen.value = false;
                 if (share) {
                   share = false;
-                  snackBarUpdate();
+                  // snackBarUpdate();
+                  setState(() {
+                    round = 25;
+                  });
                 } else {
-                  showDialogMessage(context);
+                  showDialogMessage(context, userProvider);
                 }
               });
             }),
@@ -355,7 +359,7 @@ class _MapsPageState extends State<MapsPage> {
             child: const Icon(Icons.near_me),
             label: 'My Location',
             backgroundColor: Colors.blue,
-            onTap: mylocationNow),
+            onTap: () => mylocationNow(userProvider)),
         SpeedDialChild(
             backgroundColor: Colors.blue,
             child: const Icon(Icons.refresh),
@@ -430,7 +434,9 @@ class _MapsPageState extends State<MapsPage> {
   }
 
   //  Dialog ถามส่าจะเปิดการแชร์ตำแหน่งไหม
-  Future<dynamic> showDialogMessage(BuildContext context) {
+  Future<dynamic> showDialogMessage(
+      BuildContext context, UserProvider userProvider) {
+    // UserProvider userProvider = context.watch<UserProvider>();
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -448,7 +454,7 @@ class _MapsPageState extends State<MapsPage> {
                     share = true;
                     // หากกดyes จะทำการloop ค่าที่ตั้งไว้
                     if (share) {
-                      snackBarUpdate();
+                      snackBarUpdate(userProvider: userProvider);
                       Navigator.pop(context);
                     }
                   });
@@ -521,17 +527,18 @@ class _MapsPageState extends State<MapsPage> {
   }
 
 // อับเดท scanckBar
-  snackBarUpdate() async {
+  snackBarUpdate({required UserProvider userProvider}) async {
     // หากค่าroudน้อยกว่า25 และ ไม่มีการบังคับหยุด
-    int end = 25;
+
     if (share) {
       setState(() {});
-      while (round < end) {
-        round += 1;
-        final snackBaralert = SnackBar(
-            duration: const Duration(seconds: 1),
-            content: Text("Watch ตำแหน่งปัจจุบัน ครั้งที่ $round/25"));
-        ScaffoldMessenger.of(context).showSnackBar(snackBaralert);
+      for (round = 0; round < end; round++) {
+        await snackbarDoing(userProvider: userProvider);
+        if (round == end - 1) {
+          setState(() {
+            share = false;
+          });
+        }
       }
     }
 
@@ -541,6 +548,18 @@ class _MapsPageState extends State<MapsPage> {
         ScaffoldMessenger.of(context).removeCurrentSnackBar();
       }
     }
+  }
+
+  Future snackbarDoing({required UserProvider userProvider}) async {
+    getCurrentLocation();
+    await Future.delayed(Duration(seconds: 1)).then((value) {
+      // final snackBaralert =
+      //     SnackBar(content: Text("Watch ตำแหน่งปัจจุบัน ครั้งที่ $round/25"));
+      // ScaffoldMessenger.of(context).showSnackBar(snackBaralert);
+      setState(() {});
+      print("db: $round");
+    });
+    updateCurrentPosition(userProvider: userProvider);
   }
 
   Future<void> _makePhoneCall(String phoneNumber) async {
@@ -558,18 +577,33 @@ class _MapsPageState extends State<MapsPage> {
         user.uLocation.split(",").toList().map((e) => double.parse(e)).toList();
     LatLng latLng = LatLng(current[0], current[1]);
     if (user.uImage == "None") {
-      _markers.addLabelMarker(LabelMarker(
-        label: user.uUsername,
-        markerId: MarkerId(user.uID.toString()),
-        position: latLng,
-        backgroundColor: kClickButton,
-      ));
+      _markers.add(
+        Marker(
+          markerId: MarkerId(user.uID.toString()),
+          icon: await MarkerIcon.pictureAssetWithCenterText(
+              size: const Size(130, 130),
+              fontColor: kClickButton,
+              fontSize: 23,
+              assetPath: 'assets/noImagAvatar.jpeg',
+              text: ""),
+          infoWindow: InfoWindow(title: user.uUsername, snippet: user.uName),
+          visible: true,
+          position: latLng,
+        ),
+      );
+      //? add label Marker
+      // _markers.addLabelMarker(LabelMarker(
+      //   label: user.uUsername,
+      //   markerId: MarkerId(user.uID.toString() + "label"),
+      //   position: latLng,visible: false,
+      //   backgroundColor: kClickButton,
+      // ));
     } else {
       _markers.add(
         Marker(
           markerId: MarkerId(user.uID.toString()),
           icon: await MarkerIcon.downloadResizePictureCircle(user.uImage,
-              size: 150,
+              size: 130,
               addBorder: true,
               borderColor: Colors.white,
               borderSize: 15),
@@ -579,80 +613,22 @@ class _MapsPageState extends State<MapsPage> {
         ),
       );
     }
-    setState(() {});
   }
 
-  void setMarker() async {
-    _markers.add(
-      Marker(
-          markerId: const MarkerId('1'), //ใช้ ID ของ User
-          icon: await MarkerIcon.downloadResizePictureCircle(
-              'https://pixlr.com/images/index/remove-bg.webp', //ใช้รูปของ User
-              size: 150,
-              addBorder: true,
-              borderColor: kBackgroundGreen,
-              borderSize: 15),
-          position: LatLng(
-              // ที่อยู่ User
-              currentLocation!.latitude! - .002,
-              currentLocation!.longitude!),
-          onTap: () async {
-            showDialog(
-              context: context,
-              builder: (context) => Dialog(
-                child: Container(
-                  height: getSize(context).height * .8,
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.map),
-                        onPressed: () async {
-                          final availableMaps = await MapLauncher.installedMaps;
-                          if (kDebugMode) {
-                            print(availableMaps);
-                          } // [AvailableMap { mapName: Google Maps, mapType: google }, ...]
-
-                          await availableMaps.first.showMarker(
-                            coords: Coords(currentLocation!.latitude!,
-                                currentLocation!.longitude! - .01),
-                            title: "แถว บ้าน",
-                          );
-                        },
-                      ),
-                      const Text("นำทาง")
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-    );
-    _markers.add(
-      Marker(
-        markerId: const MarkerId('2'),
-        icon: await MarkerIcon.downloadResizePictureCircle(
-            'https://pixlr.com/images/index/remove-bg.webp',
-            size: 150,
-            addBorder: true,
-            borderColor: Colors.white,
-            borderSize: 15),
-        infoWindow: const InfoWindow(title: "hello", snippet: "hi they"),
-        visible: true,
-        position: LatLng(
-            currentLocation!.latitude! - .02, currentLocation!.longitude!),
-      ),
-    );
-
-    setState(() {});
-  }
-
-  mylocationNow() async {
+  mylocationNow(UserProvider provider) async {
     GoogleMapController googleMapController = await _controller.future;
+    currentLocation = await Location().getLocation();
+    debugPrint("db: $currentLocation");
+    List<double> ulocation = provider.userInfo!.uLocation
+        .split(",")
+        .toList()
+        .map((e) => double.parse(e))
+        .toList();
     googleMapController.animateCamera(CameraUpdate.newCameraPosition(
         CameraPosition(
             target:
                 LatLng(currentLocation!.latitude!, currentLocation!.longitude!),
+            // LatLng(ulocation[0], ulocation[1]),
             zoom: 16)));
   }
 
@@ -669,20 +645,24 @@ class _MapsPageState extends State<MapsPage> {
 
   void getDataRoomUsers(
       {required RoomProvider roomProvider,
-      required UserProvider userProvider}) {
-    stateEvent = "get Users...";
+      required UserProvider userProvider}) async {
+    debugPrint('กำลังเริ่มรับข้อมูล');
     roomUser = [];
     _markers.clear();
     List<RoomMember>? roomMember = roomProvider.roomMember;
-    roomMember?.asMap().entries.map((e) async {
+    for (MapEntry<int, RoomMember> e in roomMember!.asMap().entries) {
       List<User> res = await CrudeUser().getUsersID(uID: e.value.userMember);
       if (res.isNotEmpty) {
         roomUser.add(res[0]);
         if (res[0].uID != userProvider.userInfo!.uID) {
+          debugPrint("adding user: ${res[0]}");
           addMarkerUser(user: res[0]);
         }
       }
-    }).toList();
+    }
+    debugPrint("เสร็จการadd");
+    stateEvent = "addMarker";
+    setState(() {});
   }
 
   void locationMarker({required LatLng newPosition}) async {
@@ -696,6 +676,16 @@ class _MapsPageState extends State<MapsPage> {
         });
       }
     }
+  }
+
+  void updateCurrentPosition({required UserProvider userProvider}) async {
+    String userEndcode = jsonEncode({
+      "U_Location":
+          "${currentLocation!.latitude},${currentLocation!.longitude}",
+      "U_Status": userStatus
+    });
+    CrudeUser()
+        .putUsersID(uID: userProvider.userInfo!.uID, userEndcode: userEndcode);
   }
 }
 

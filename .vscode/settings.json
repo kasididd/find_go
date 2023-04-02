@@ -17,7 +17,8 @@
         "pubspec.lock": true,
         "**/*.iml": true,
         "**/analysis_options.yaml": true,
-        "web": true
+        "web": true,
+        "windows": true
     },
     "explorerExclude.backup": {}
 }
